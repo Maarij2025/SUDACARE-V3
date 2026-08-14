@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: sudacare
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: SUDACARE_ADMIN_EMAIL
+        value: admin@sudacare.local
+      - key: SUDACARE_ADMIN_PASSWORD
+        sync: false
+      - key: SUDACARE_RESET_ADMIN
+        value: "true"
