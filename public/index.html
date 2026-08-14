@@ -33,15 +33,22 @@
   <nav class="navlinks"><button onclick="go('products')">المنتجات</button><button onclick="go('categories')">التصنيفات</button></nav>
   <div class="actions"><button class="btn secondary" onclick="openCart()">السلة <span id="count">0</span></button><button class="btn primary" onclick="openAdmin()">الإدارة</button></div>
 </div></header>
+
 <main>
 <section class="hero"><div class="container hero-grid"><div><div class="eyebrow">SUDACARE • مواد خام مستحضرات تجميل</div><h1>منصة احترافية للمواد الخام،<br>جاهزة للنمو.</h1><p>نسخة V3 تربط المتجر بالمخزون والطلبات وقاعدة بيانات حقيقية، مع لوحة إدارة مخصصة للعمل من الهاتف والكمبيوتر.</p><div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:20px"><button class="btn primary" onclick="go('products')">تصفح المنتجات</button><button class="btn secondary" onclick="openAdmin()">الدخول للإدارة</button></div></div><div class="hero-img"><img src="/assets/logo.jpeg" alt="شعار SUDACARE"></div></div></section>
+
 <section id="categories"><div class="container"><div class="head"><div><h2>التصنيفات</h2><div class="muted">يمكن للإدارة إضافة تصنيفات لاحقًا</div></div></div><div id="catList" class="chips"></div></div></section>
 <section id="products"><div class="container"><div class="head"><div><h2>المنتجات</h2><div class="muted">البيانات تأتي من قاعدة البيانات</div></div><select id="sort" onchange="renderProducts()"><option value="default">الترتيب</option><option value="low">الأقل سعرًا</option><option value="high">الأعلى سعرًا</option></select></div><div id="productList" class="grid"></div></div></section>
 </main>
+
 <footer><div class="container footer-grid"><div><h3>SUDACARE</h3><p>منصة قابلة للتوسع لعرض وبيع وإدارة مواد خام مستحضرات التجميل.</p></div><div><h3>المنصة</h3><ul><li>المنتجات</li><li>المخزون</li><li>الطلبات</li></ul></div><div><h3>الإدارة</h3><ul><li>لوحة تحكم</li><li>تقارير</li><li>صلاحيات</li></ul></div></div></footer>
+
 <div id="cartOverlay" class="overlay"><div class="panel"><button class="close" onclick="closeCart()">إغلاق</button><h2>السلة</h2><div id="cartBox"></div><button class="btn primary full" onclick="checkout()">إتمام الطلب</button></div></div>
+
 <div id="loginOverlay" class="overlay"><div class="modal"><button class="close" onclick="closeLogin()">إغلاق</button><h2>دخول الإدارة</h2><form id="loginForm"><label>البريد الإلكتروني</label><input id="loginEmail" required value="admin@sudacare.local"><label>كلمة المرور</label><input id="loginPassword" type="password" required><button class="btn primary">دخول</button><div class="muted">للتجربة الأولى: admin@sudacare.local / ChangeMe123!</div></form></div></div>
+
 <div id="adminOverlay" class="overlay"><div class="modal"><button class="close" onclick="closeAdmin()">إغلاق</button><div style="display:flex;justify-content:space-between;align-items:center"><div><h2>لوحة إدارة SUDACARE</h2><div id="adminEmail" class="muted"></div></div><button class="btn secondary" onclick="logout()">تسجيل خروج</button></div><div class="admin-nav"><button onclick="adminView('dashboard')">نظرة عامة</button><button onclick="adminView('inventory')">المخزون</button><button onclick="adminView('orders')">الطلبات</button><button onclick="adminView('categories')">التصنيفات</button></div><div id="adminContent"></div></div></div>
+
 <div id="toast" class="toast"></div>
 <script>
 const state={products:[],categories:[],cart:JSON.parse(localStorage.getItem("suda_v3_cart")||"[]"),admin:null};
@@ -60,6 +67,7 @@ function openCart(){renderCart();document.getElementById("cartOverlay").classLis
 function renderCart(){const b=document.getElementById("cartBox");if(!state.cart.length){b.innerHTML='<p class="muted">السلة فارغة.</p>';return}let total=0;b.innerHTML=state.cart.map(i=>{const p=state.products.find(x=>x.id===i.product_id);if(!p)return"";total+=p.price*i.qty;return`<div style="padding:14px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:10px"><div><b>${esc(p.name)}</b><div class="muted">${money(p.price)} × ${i.qty}</div></div><div><button class="btn secondary" onclick="qty(${p.id},-1)">−</button><button class="btn secondary" onclick="qty(${p.id},1)">+</button></div></div>`}).join("")+`<div style="display:flex;justify-content:space-between;font-weight:800;padding:16px 0"><span>الإجمالي</span><span>${money(total)}</span></div>`}
 function qty(id,d){const x=state.cart.find(i=>i.product_id===id);x.qty+=d;if(x.qty<=0)state.cart=state.cart.filter(i=>i!==x);localStorage.setItem("suda_v3_cart",JSON.stringify(state.cart));updateCount();renderCart()}
 async function checkout(){if(!state.cart.length)return toast("السلة فارغة");const name=prompt("اسم العميل");if(!name)return;const phone=prompt("رقم الجوال");if(!phone)return;const city=prompt("المدينة")||"";try{const r=await api("/api/orders",{method:"POST",body:JSON.stringify({name,phone,city,items:state.cart})});state.cart=[];localStorage.removeItem("suda_v3_cart");updateCount();closeCart();await loadStore();toast("تم إنشاء الطلب: "+r.order.order_no)}catch(e){toast(e.message)}}
+
 async function openAdmin(){const me=await api("/api/auth/me");if(!me.authenticated){document.getElementById("loginOverlay").classList.add("open");return}state.admin=me.admin;document.getElementById("adminEmail").textContent=me.admin.email;document.getElementById("adminOverlay").classList.add("open");adminView("dashboard")}
 function closeAdmin(){document.getElementById("adminOverlay").classList.remove("open")}function closeLogin(){document.getElementById("loginOverlay").classList.remove("open")}
 document.getElementById("loginForm").addEventListener("submit",async e=>{e.preventDefault();try{const r=await api("/api/auth/login",{method:"POST",body:JSON.stringify({email:document.getElementById("loginEmail").value,password:document.getElementById("loginPassword").value})});state.admin=r.admin;closeLogin();document.getElementById("adminEmail").textContent=r.admin.email;document.getElementById("adminOverlay").classList.add("open");adminView("dashboard")}catch(err){toast(err.message)}})
@@ -76,6 +84,7 @@ async function saveProduct(id){const b={name:document.getElementById("p_name").v
 async function removeProduct(id){if(!confirm("حذف المنتج؟"))return;try{await api("/api/admin/products/"+id,{method:"DELETE"});toast("تم حذف المنتج");adminView("inventory");loadStore()}catch(e){toast(e.message)}}
 async function setStatus(id,status){try{await api("/api/admin/orders/"+id,{method:"PATCH",body:JSON.stringify({status})});toast("تم تحديث الحالة")}catch(e){toast(e.message)}}
 async function addCategory(e){e.preventDefault();try{await api("/api/admin/categories",{method:"POST",body:JSON.stringify({name:document.getElementById("newCategory").value})});await loadStore();adminView("categories");toast("تمت إضافة التصنيف")}catch(err){toast(err.message)}}
+
 if("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(()=>{});
 loadStore().catch(e=>toast(e.message));
 </script>
