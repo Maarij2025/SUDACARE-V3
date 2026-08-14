@@ -20,8 +20,12 @@ CREATE TABLE IF NOT EXISTS admins (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   email TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
+  name TEXT NOT NULL DEFAULT '',
+  role TEXT NOT NULL DEFAULT 'admin',
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+try { db.exec("ALTER TABLE admins ADD COLUMN name TEXT NOT NULL DEFAULT ''"); } catch {}
+try { db.exec("ALTER TABLE admins ADD COLUMN role TEXT NOT NULL DEFAULT 'admin'"); } catch {}
 
 CREATE TABLE IF NOT EXISTS sessions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -231,7 +235,7 @@ async function route(req, res) {
     const token = crypto.randomBytes(32).toString("hex");
     const expires = new Date(Date.now() + 7*24*60*60*1000).toISOString();
     db.prepare("INSERT INTO sessions(token_hash,admin_id,expires_at) VALUES(?,?,?)").run(tokenHash(token), admin.id, expires);
-    return json(res, 200, { ok: true, admin: { id: admin.id, email: admin.email } }, {
+    return json(res, 200, { ok: true, admin: { id: admin.id, email: admin.email, name: admin.name || "", role: admin.role || "admin" } }, {
       "Set-Cookie": `suda_session=${encodeURIComponent(token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800`
     });
   }
@@ -343,6 +347,14 @@ async function route(req, res) {
     } catch { return json(res,409,{error:"DUPLICATE_CATEGORY"}); }
   }
   if (p === "/api/admin/categories" && method === "GET") return json(res,200,{categories:categories()});
+  const categoryMatch=p.match(/^\/api\/admin\/categories\/(\d+)$/);
+  if(categoryMatch && method==="PATCH"){ const b=await parseBody(req), name=String(b.name||"").trim(); if(!name)return json(res,400,{error:"INVALID_CATEGORY",message:"اسم التصنيف مطلوب."}); try{db.prepare("UPDATE categories SET name=? WHERE id=?").run(name,Number(categoryMatch[1]));return json(res,200,{ok:true});}catch{return json(res,409,{error:"DUPLICATE_CATEGORY",message:"اسم التصنيف مستخدم بالفعل."});} }
+  if(categoryMatch && method==="DELETE"){ const id=Number(categoryMatch[1]); const used=db.prepare("SELECT COUNT(*) c FROM products WHERE category_id=? AND active=1").get(id).c; if(Number(used)>0)return json(res,409,{error:"CATEGORY_IN_USE",message:"لا يمكن حذف تصنيف مرتبط بمنتجات."}); db.prepare("DELETE FROM categories WHERE id=?").run(id); return json(res,200,{ok:true}); }
+  if(p==="/api/admin/users" && method==="GET") return json(res,200,{users:db.prepare("SELECT id,email,name,role,created_at FROM admins ORDER BY id DESC").all()});
+  if(p==="/api/admin/users" && method==="POST"){ const b=await parseBody(req),email=String(b.email||"").trim().toLowerCase(),password=String(b.password||""),name=String(b.name||"").trim(),role=String(b.role||"editor"); if(!email||!password)return json(res,400,{error:"INVALID_USER",message:"البريد وكلمة المرور مطلوبان."}); if(password.length<8)return json(res,400,{error:"WEAK_PASSWORD",message:"كلمة المرور يجب أن تكون 8 أحرف على الأقل."}); if(!["admin","manager","editor"].includes(role))return json(res,400,{error:"INVALID_ROLE"}); try{const hash=await hashPassword(password);const r=db.prepare("INSERT INTO admins(email,password_hash,name,role) VALUES(?,?,?,?) RETURNING id").get(email,hash,name,role);return json(res,201,{ok:true,id:r.id});}catch{return json(res,409,{error:"DUPLICATE_USER",message:"البريد مستخدم بالفعل."});} }
+  const userMatch=p.match(/^\/api\/admin\/users\/(\d+)$/);
+  if(userMatch && method==="PATCH"){ const id=Number(userMatch[1]),b=await parseBody(req),email=String(b.email||"").trim().toLowerCase(),name=String(b.name||"").trim(),role=String(b.role||"editor"),password=String(b.password||""); if(!db.prepare("SELECT id FROM admins WHERE id=?").get(id))return json(res,404,{error:"NOT_FOUND"}); if(!email||!["admin","manager","editor"].includes(role))return json(res,400,{error:"INVALID_USER"}); try{if(password){if(password.length<8)return json(res,400,{error:"WEAK_PASSWORD",message:"كلمة المرور يجب أن تكون 8 أحرف على الأقل."});const hash=await hashPassword(password);db.prepare("UPDATE admins SET email=?,name=?,role=?,password_hash=? WHERE id=?").run(email,name,role,hash,id);}else db.prepare("UPDATE admins SET email=?,name=?,role=? WHERE id=?").run(email,name,role,id);return json(res,200,{ok:true});}catch{return json(res,409,{error:"DUPLICATE_USER",message:"البريد مستخدم بالفعل."});} }
+  if(userMatch && method==="DELETE"){ const id=Number(userMatch[1]); if(id===admin.id)return json(res,400,{error:"CANNOT_DELETE_SELF",message:"لا يمكنك حذف المستخدم الحالي."}); db.prepare("DELETE FROM admins WHERE id=?").run(id); return json(res,200,{ok:true}); }
 
   if (p === "/api/admin/orders" && method === "GET") {
     const orders=db.prepare(`
