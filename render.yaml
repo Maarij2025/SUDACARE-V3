@@ -3,7 +3,7 @@ services:
     name: sudacare
     runtime: node
     plan: free
-    buildCommand: npm install
+    buildCommand: npm install && node prepare-render.mjs
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
