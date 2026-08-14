@@ -1,0 +1,33 @@
+name: Unpack SUDACARE V3
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'SUDACARE_V3_Production_Starter.zip'
+
+permissions:
+  contents: write
+
+jobs:
+  unpack:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Unpack project
+        run: |
+          rm -rf /tmp/sudacare
+          mkdir -p /tmp/sudacare
+          unzip -o SUDACARE_V3_Production_Starter.zip -d /tmp/sudacare
+          cp -R /tmp/sudacare/. .
+
+      - name: Commit extracted project
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add server.js package.json README.md public .gitignore
+          git diff --cached --quiet || git commit -m 'Unpack SUDACARE V3 production starter'
+          git push
