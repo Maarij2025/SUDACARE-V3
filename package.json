@@ -5,7 +5,7 @@
   "description": "SUDACARE V3 - متجر وإدارة ومخزون وطلبات بقاعدة بيانات SQLite",
   "type": "module",
   "scripts": {
-    "start": "node scripts/sync-admin.js && node server.js",
+    "start": "node server.js",
     "dev": "node --watch server.js"
   },
   "engines": {
