@@ -4,8 +4,6 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths:
-      - 'SUDACARE_V3_Production_Starter.zip'
 
 permissions:
   contents: write
