@@ -1,11 +1,11 @@
 {
   "name": "sudacare-v3",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "private": true,
   "description": "SUDACARE V3 - متجر وإدارة ومخزون وطلبات بقاعدة بيانات SQLite",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
+    "start": "node admin-sync.js && node server.js",
     "dev": "node --watch server.js"
   },
   "engines": {
